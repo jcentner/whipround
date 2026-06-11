@@ -11,4 +11,6 @@ export default defineConfig({
   site: 'https://whipround.com',
   output: 'static',
   adapter: node({ mode: 'standalone' }),
+  // The progress endpoint imports the shared market/ module, a sibling of web/.
+  vite: { server: { fs: { allow: ['..'] } } },
 });

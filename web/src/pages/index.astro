@@ -1,10 +1,27 @@
 ---
 import Layout from "../layouts/Layout.astro";
+import Thermometer from "../components/Thermometer.astro";
 import { campaign } from "../../lib/campaign";
 import { formatUsd } from "../../lib/format";
+import { goalBreakdown } from "../../lib/economics";
 
 const isPlaceholder = (s: string) => s.startsWith("[") && s.endsWith("]");
 const pledgeReady = campaign.pledgeLinks.every((link) => !isPlaceholder(link.url));
+const campaignChosen = !isPlaceholder(campaign.beneficiaryName);
+
+const breakdown = goalBreakdown(
+  campaign.goalCents,
+  campaign.targetBlocks,
+  campaign.clickBufferMultiplier,
+);
+
+const deadlineText = isPlaceholder(campaign.fundingDeadline)
+  ? "the deadline (set at launch)"
+  : new Date(campaign.fundingDeadline).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
 
 function pledgeLabel(amountCents: number | "custom"): string {
   return amountCents === "custom" ? "Choose amount" : formatUsd(amountCents);
@@ -13,16 +30,64 @@ function pledgeLabel(amountCents: number | "custom"): string {
 
 <Layout title={`Whipround — ${campaign.headline}`}>
   <main>
-    <!-- Revealed by the thermometer island after a pledger returns from Stripe (?pledged=1). -->
+    {
+      !campaignChosen && (
+        <aside class="preview-notice">
+          <strong>Preview.</strong> Campaign #1 hasn't been chosen yet, so the
+          beneficiary copy below is placeholder text marked
+          <code>[CAMPAIGN-TBD]</code>.
+        </aside>
+      )
+    }
+
+    {/* Revealed by the thermometer island when a pledger returns from Stripe (?pledged=1). */}
     <aside id="pledged-banner" class="pledged-banner" hidden>
       <strong>Thank you — your pledge is in.</strong>
       Watch the thermometer move, then tell one person who'd care.
     </aside>
 
     <h1>{campaign.headline}</h1>
-    <p>{campaign.story}</p>
-    <p>Goal: <strong>{formatUsd(campaign.goalCents)}</strong></p>
-    <p>Tribute for: {campaign.beneficiaryName}</p>
+    <p class="lede">{campaign.story}</p>
+
+    <Thermometer goalCents={campaign.goalCents} />
+
+    <p class="market-line">
+      Right now, the top of the kickbacks.ai queue costs
+      <strong id="mkt-price">—</strong> per 1,000 impressions. A hundred people
+      can split that. One person joking around can't.
+    </p>
+
+    <section class="buys" aria-labelledby="buys-heading">
+      <h2 id="buys-heading">What your money buys</h2>
+      <p>The goal is sized straight from the auction, in the open:</p>
+      <ul class="math">
+        <li>
+          <strong>{breakdown.targetBlocks} blocks</strong> =
+          {breakdown.impressions.toLocaleString("en-US")} five-second impressions
+          in the spinner
+        </li>
+        <li>
+          sized at <strong>{formatUsd(breakdown.impliedBlockPriceCents)}</strong>
+          per block × <strong>{breakdown.clickBufferMultiplier}×</strong> a click
+          buffer
+        </li>
+        <li>= <strong>{formatUsd(breakdown.goalCents)}</strong> goal</li>
+      </ul>
+      <p class="fine">
+        If the live price moves before launch, the goal is re-sized in public —
+        never quietly shrunk.
+      </p>
+    </section>
+
+    <section class="kicker" aria-labelledby="kicker-heading">
+      <h2 id="kicker-heading">The best worst ad deal ever made</h2>
+      <p>
+        Clicks bill at <strong>50× the impression rate</strong>, and the ad
+        links to {campaign.beneficiaryName}'s sponsor page. Every click drains
+        the pool fast — and that's the point: the pool literally pays to send
+        {" "}{campaign.beneficiaryName} potential sponsors. We want you to click.
+      </p>
+    </section>
 
     <section class="pledge" aria-labelledby="pledge-heading">
       <h2 id="pledge-heading">Pledge</h2>
@@ -42,22 +107,74 @@ function pledgeLabel(amountCents: number | "custom"): string {
         )
       }
       <p class="pledge-note">
-        Pledges are charged immediately. If the goal isn't met by the deadline,
-        every pledge is refunded in full.
+        <strong>
+          Pledges are charged immediately. If we don't reach {formatUsd(campaign.goalCents)}
+          {" "}by {deadlineText}, every pledge is refunded in full.
+        </strong>
+      </p>
+    </section>
+
+    <section class="faq" aria-labelledby="faq-heading">
+      <h2 id="faq-heading">Questions</h2>
+
+      <h3>Where does my money go?</h3>
+      <p>
+        Into a single ad buy on <a href="https://kickbacks.ai">kickbacks.ai</a> —
+        the sponsored line that replaces the spinner verb in Claude Code and
+        Codex. Pooled pledges bid for the #1 slot so the tribute serves first.
+      </p>
+
+      <h3>What if the goal isn't met?</h3>
+      <p>
+        Whipround campaigns run for a short window — about two weeks. If we don't
+        reach the goal by {deadlineText}, every pledge is refunded in full.
+        You're charged when you pledge; if the campaign doesn't fund, the charge
+        is reversed. No balances, no store credit.
+      </p>
+
+      <h3>What happens to leftover funds?</h3>
+      <p>
+        Whatever isn't spent on the ad goes 100% to {campaign.beneficiaryName}'s
+        sponsor/donate page. Whipround keeps $0.
+      </p>
+
+      <h3>Is this a charity?</h3>
+      <p>
+        No. A pledge buys participation in a community ad buy — it isn't a
+        donation and isn't tax-deductible. It's a tribute, paid for in the open.
+      </p>
+
+      <h3>Who runs this?</h3>
+      <p>
+        Whipround is operated by
+        <a href="https://write-it-right.ai">Write It Right</a> (write-it-right.ai).
+        That's the name you'll see on your card statement.
       </p>
     </section>
 
     <footer>
       <p>
-        Whipround is operated by
-        <a href="https://write-it-right.ai">Write It Right</a> (write-it-right.ai)
-        — the name that appears on your card statement.
+        Operated by <a href="https://write-it-right.ai">Write It Right</a>
+        (write-it-right.ai). Pledges are processed by Stripe; we store only
+        aggregate totals, never your name or email.
       </p>
     </footer>
   </main>
 </Layout>
 
 <style>
+  .preview-notice {
+    border: 1px dashed var(--muted);
+    border-radius: 0.5rem;
+    padding: 0.6rem 0.9rem;
+    margin-bottom: 1.5rem;
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+  .preview-notice code {
+    color: var(--fg);
+  }
+
   .pledged-banner {
     display: block;
     border: 1px solid var(--accent-2);
@@ -67,10 +184,32 @@ function pledgeLabel(amountCents: number | "custom"): string {
     background: color-mix(in srgb, var(--accent-2) 12%, transparent);
   }
 
+  .lede {
+    font-size: 1.15rem;
+  }
+
+  .market-line {
+    color: var(--fg);
+  }
+  #mkt-price {
+    color: var(--accent);
+  }
+
+  .buys .math {
+    list-style: none;
+    padding: 0;
+    margin: 0.5rem 0;
+    display: grid;
+    gap: 0.35rem;
+  }
+  .fine {
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+
   .pledge {
     margin: 2rem 0;
   }
-
   .pledge-buttons {
     list-style: none;
     padding: 0;
@@ -79,7 +218,6 @@ function pledgeLabel(amountCents: number | "custom"): string {
     flex-wrap: wrap;
     gap: 0.75rem;
   }
-
   .pledge-btn {
     display: inline-block;
     padding: 0.75rem 1.5rem;
@@ -90,17 +228,28 @@ function pledgeLabel(amountCents: number | "custom"): string {
     font-weight: 700;
     text-decoration: none;
   }
-
   .pledge-btn:hover {
     filter: brightness(1.08);
   }
-
   .pledge-pending {
     color: var(--muted);
     font-style: italic;
   }
-
   .pledge-note {
+    font-size: 0.95rem;
+  }
+
+  .faq h3 {
+    margin-bottom: 0.25rem;
+  }
+  .faq p {
+    margin-top: 0;
+  }
+
+  footer {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
     color: var(--muted);
     font-size: 0.9rem;
   }

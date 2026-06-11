@@ -1,0 +1,117 @@
+---
+import { formatUsd } from "../../lib/format";
+
+interface Props {
+  goalCents: number;
+}
+
+const { goalCents } = Astro.props;
+---
+
+<section class="thermometer" aria-label="Campaign progress">
+  <div class="thermo-amounts">
+    <span id="thermo-pledged" class="thermo-pledged" data-goal={goalCents}>
+      {formatUsd(0)}
+    </span>
+    <span class="thermo-goal">pledged of {formatUsd(goalCents)} goal</span>
+  </div>
+
+  <div
+    id="thermo-track"
+    class="thermo-track"
+    role="progressbar"
+    aria-valuemin="0"
+    aria-valuemax={goalCents}
+    aria-valuenow="0"
+  >
+    <div id="thermo-fill" class="thermo-fill" style="width: 0%"></div>
+  </div>
+
+  <p class="thermo-count"><span id="thermo-count">0</span> pledgers</p>
+</section>
+
+<script>
+  import { formatUsd } from "../../lib/format";
+
+  const pledgedEl = document.getElementById("thermo-pledged");
+  const fillEl = document.getElementById("thermo-fill");
+  const trackEl = document.getElementById("thermo-track");
+  const countEl = document.getElementById("thermo-count");
+  const priceEl = document.getElementById("mkt-price");
+  const bannerEl = document.getElementById("pledged-banner");
+
+  async function refresh(): Promise<void> {
+    try {
+      const res = await fetch("/api/progress", {
+        headers: { accept: "application/json" },
+      });
+      if (!res.ok) return;
+      const p = (await res.json()) as {
+        pledgedCents: number;
+        pledgerCount: number;
+        fraction: number;
+        topBidCents?: number | null;
+      };
+      if (pledgedEl) pledgedEl.textContent = formatUsd(p.pledgedCents);
+      if (fillEl) fillEl.style.width = `${Math.round((p.fraction ?? 0) * 100)}%`;
+      if (trackEl) trackEl.setAttribute("aria-valuenow", String(p.pledgedCents));
+      if (countEl) countEl.textContent = String(p.pledgerCount);
+      if (priceEl && typeof p.topBidCents === "number") {
+        priceEl.textContent = formatUsd(p.topBidCents);
+      }
+    } catch {
+      /* network blip — keep the last rendered state */
+    }
+  }
+
+  // Reveal the thank-you note when a pledger returns from Stripe checkout.
+  if (bannerEl && new URLSearchParams(location.search).get("pledged") === "1") {
+    bannerEl.hidden = false;
+  }
+
+  void refresh();
+  setInterval(() => void refresh(), 30_000);
+</script>
+
+<style>
+  .thermometer {
+    margin: 1.5rem 0;
+  }
+
+  .thermo-amounts {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .thermo-pledged {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--accent-2);
+  }
+
+  .thermo-goal {
+    color: var(--muted);
+  }
+
+  .thermo-track {
+    height: 1.25rem;
+    background: var(--border);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+
+  .thermo-fill {
+    height: 100%;
+    background: var(--accent-2);
+    border-radius: 999px;
+    transition: width 0.6s ease;
+  }
+
+  .thermo-count {
+    margin: 0.5rem 0 0;
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+</style>

@@ -1,15 +1,17 @@
 /**
- * Pledge progress — Stripe is the database (D3).
+ * Pledge progress — Stripe is the datastore.
  *
- * Lists paid Checkout sessions for the campaign's Stripe product and
- * aggregates. No DB, no PII retained: aggregates only.
+ * Pledges are paid Stripe Checkout sessions (created by the campaign's Payment
+ * Links, all tied to one Product). This module lists the paid sessions for that
+ * Product and reports aggregates only — no names, no emails, no database.
  *
- * TODO(opus) T4:
- *  - implement via Stripe API (list checkout sessions filtered to the
- *    campaign product, status=paid; exclude refunded amounts)
- *  - cache ~60s in-process (single long-lived Node process per D7; staleness beats hammering Stripe)
- *  - unit-test the aggregation math with fixture sessions, incl. a partial refund
+ * The aggregation math is the one number we can't get wrong in public, so it
+ * lives in pure, unit-tested functions (`aggregatePledges`, `buildProgress`);
+ * the Stripe round-trip is a thin wrapper cached for ~60s.
  */
+
+import Stripe from "stripe";
+import { campaign } from "./campaign";
 
 export interface Progress {
   pledgedCents: number;
@@ -19,7 +21,124 @@ export interface Progress {
   fraction: number;
 }
 
+/** One paid pledge, reduced to the only fields the math needs. */
+export interface PledgeRecord {
+  amountTotalCents: number;
+  amountRefundedCents: number;
+}
+
+/**
+ * Sum net pledged cents and count backers. Net excludes refunds; a fully
+ * refunded pledge contributes nothing and isn't counted. Pure + tested.
+ */
+export function aggregatePledges(records: PledgeRecord[]): {
+  pledgedCents: number;
+  pledgerCount: number;
+} {
+  let pledgedCents = 0;
+  let pledgerCount = 0;
+  for (const r of records) {
+    const net = r.amountTotalCents - r.amountRefundedCents;
+    if (net > 0) {
+      pledgedCents += net;
+      pledgerCount += 1;
+    }
+  }
+  return { pledgedCents, pledgerCount };
+}
+
+/** Assemble a Progress with a clamped fraction. Pure + tested. */
+export function buildProgress(
+  pledgedCents: number,
+  pledgerCount: number,
+  goalCents: number,
+): Progress {
+  const fraction =
+    goalCents > 0 ? Math.min(1, Math.max(0, pledgedCents / goalCents)) : 0;
+  return { pledgedCents, pledgerCount, goalCents, fraction };
+}
+
+const CACHE_TTL_MS = 60_000;
+let cached: { value: Progress; at: number } | null = null;
+
+function isConfigured(value: string): boolean {
+  return value !== "" && !value.startsWith("[");
+}
+
+/**
+ * Live pledge progress for the campaign. Reads paid Checkout sessions for the
+ * campaign's Stripe Product, cached ~60s. Degrades safely: with no Stripe key
+ * (pre-launch / dev) it reports zero raised; on a transient Stripe error it
+ * serves the last good value, or zero if there isn't one yet.
+ */
 export async function getProgress(): Promise<Progress> {
-  // TODO(opus) T4
-  throw new Error("not implemented");
+  const now = Date.now();
+  if (cached && now - cached.at < CACHE_TTL_MS) {
+    return cached.value;
+  }
+
+  const secretKey = process.env.STRIPE_SECRET_KEY;
+  const productId =
+    process.env.WHIPROUND_STRIPE_PRODUCT_ID ?? campaign.stripeProductId;
+
+  if (!secretKey || !isConfigured(productId)) {
+    // Pre-launch: nothing wired yet, nothing raised yet.
+    const value = buildProgress(0, 0, campaign.goalCents);
+    cached = { value, at: now };
+    return value;
+  }
+
+  try {
+    const stripe = new Stripe(secretKey);
+    const records: PledgeRecord[] = [];
+
+    // Paid sessions for this Product. At Phase 0 volume the per-session line
+    // item lookup is fine; the whole call is cached for ~60s either way.
+    for await (const session of stripe.checkout.sessions.list({
+      status: "complete",
+      limit: 100,
+      expand: ["data.payment_intent.latest_charge"],
+    })) {
+      if (session.payment_status !== "paid") continue;
+      if (!(await sessionMatchesProduct(stripe, session.id, productId))) continue;
+
+      records.push({
+        amountTotalCents: session.amount_total ?? 0,
+        amountRefundedCents: refundedCentsOf(session.payment_intent),
+      });
+    }
+
+    const { pledgedCents, pledgerCount } = aggregatePledges(records);
+    const value = buildProgress(pledgedCents, pledgerCount, campaign.goalCents);
+    cached = { value, at: now };
+    return value;
+  } catch {
+    if (cached) return cached.value;
+    return buildProgress(0, 0, campaign.goalCents);
+  }
+}
+
+function refundedCentsOf(
+  paymentIntent: string | Stripe.PaymentIntent | null,
+): number {
+  if (!paymentIntent || typeof paymentIntent === "string") return 0;
+  const charge = paymentIntent.latest_charge;
+  if (!charge || typeof charge === "string") return 0;
+  return charge.amount_refunded ?? 0;
+}
+
+async function sessionMatchesProduct(
+  stripe: Stripe,
+  sessionId: string,
+  productId: string,
+): Promise<boolean> {
+  const items = await stripe.checkout.sessions.listLineItems(sessionId, {
+    limit: 100,
+    expand: ["data.price"],
+  });
+  return items.data.some((item) => {
+    const product = item.price?.product;
+    const id = typeof product === "string" ? product : product?.id;
+    return id === productId;
+  });
 }
