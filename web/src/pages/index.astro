@@ -152,6 +152,22 @@ function pledgeLabel(amountCents: number | "custom"): string {
       </p>
     </section>
 
+    <section class="suggest" aria-labelledby="suggest-heading">
+      <h2 id="suggest-heading">Suggest the next campaign</h2>
+      <p>
+        Know someone the spinner should thank? Suggest a tribute. It's curated,
+        not first-come — and please don't @-mention them yet; the blessing comes
+        first.
+      </p>
+      <p>
+        <a
+          class="suggest-link"
+          href="https://github.com/jcentner/whipround/issues/new?template=campaign-suggestion.yml"
+          >Open a suggestion →</a
+        >
+      </p>
+    </section>
+
     <footer>
       <p>
         Operated by <a href="https://write-it-right.ai">Write It Right</a>
@@ -244,6 +260,10 @@ function pledgeLabel(amountCents: number | "custom"): string {
   }
   .faq p {
     margin-top: 0;
+  }
+
+  .suggest-link {
+    font-weight: 700;
   }
 
   footer {

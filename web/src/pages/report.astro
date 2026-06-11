@@ -1,0 +1,176 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { formatUsd } from "../../lib/format";
+
+/**
+ * Post-campaign transparency report. These values are filled in by hand after
+ * the campaign closes (during fulfillment close-out). Until then they're
+ * placeholders so the template renders. Receipt images drop into
+ * public/reports/ and their paths go in *ReceiptImg below.
+ */
+const report = {
+  beneficiaryName: "[CAMPAIGN-TBD]",
+  raisedCents: 0,
+  pledgerCount: 0,
+  impressionsServed: 0,
+  clicksDelivered: 0,
+  hoursAtNumberOne: 0,
+  leftoverCents: 0,
+  bidReceiptImg: "", // e.g. /reports/campaign-1/bid-receipt.png
+  leftoverReceiptImg: "", // e.g. /reports/campaign-1/leftover-receipt.png
+  publishedDate: "", // ISO date; empty until published
+};
+
+const isTemplate = report.raisedCents === 0 && report.pledgerCount === 0;
+const n = (x: number) => x.toLocaleString("en-US");
+---
+
+<Layout
+  title="Whipround — transparency report"
+  description="The full P&L of a thank-you note: what was raised, served, and sent on."
+>
+  <main>
+    {
+      isTemplate && (
+        <aside class="preview-notice">
+          <strong>Template.</strong> This report is filled in after the campaign
+          closes. The numbers and receipts below are placeholders.
+        </aside>
+      )
+    }
+
+    <h1>Transparency report</h1>
+    <p class="lede">
+      The full P&amp;L of the tribute to {report.beneficiaryName}. No spin — just
+      the receipts.
+    </p>
+
+    <section class="ledger" aria-labelledby="ledger-heading">
+      <h2 id="ledger-heading">The numbers</h2>
+      <dl>
+        <div class="row">
+          <dt>Raised</dt>
+          <dd>{formatUsd(report.raisedCents)} from {report.pledgerCount} pledgers</dd>
+        </div>
+        <div class="row">
+          <dt>Impressions served</dt>
+          <dd>{n(report.impressionsServed)} five-second impressions</dd>
+        </div>
+        <div class="row">
+          <dt>Clicks delivered</dt>
+          <dd>{n(report.clicksDelivered)} to {report.beneficiaryName}'s sponsor page</dd>
+        </div>
+        <div class="row">
+          <dt>Time held at #1</dt>
+          <dd>{report.hoursAtNumberOne} hours</dd>
+        </div>
+        <div class="row highlight">
+          <dt>Leftover → {report.beneficiaryName}</dt>
+          <dd>{formatUsd(report.leftoverCents)}</dd>
+        </div>
+      </dl>
+    </section>
+
+    <section class="receipts" aria-labelledby="receipts-heading">
+      <h2 id="receipts-heading">Receipts</h2>
+
+      <figure>
+        <figcaption>Bid placed on kickbacks.ai</figcaption>
+        {
+          report.bidReceiptImg ? (
+            <img src={report.bidReceiptImg} alt="Screenshot of the bid receipt on kickbacks.ai" />
+          ) : (
+            <div class="receipt-pending">Receipt pending</div>
+          )
+        }
+      </figure>
+
+      <figure>
+        <figcaption>Leftover funds sent to {report.beneficiaryName}</figcaption>
+        {
+          report.leftoverReceiptImg ? (
+            <img src={report.leftoverReceiptImg} alt="Screenshot of the leftover disbursement receipt" />
+          ) : (
+            <div class="receipt-pending">Receipt pending</div>
+          )
+        }
+      </figure>
+    </section>
+
+    <footer>
+      <p>
+        Operated by <a href="https://write-it-right.ai">Write It Right</a>
+        (write-it-right.ai). We store only aggregate totals — never pledger names
+        or emails.
+      </p>
+    </footer>
+  </main>
+</Layout>
+
+<style>
+  .preview-notice {
+    border: 1px dashed var(--muted);
+    border-radius: 0.5rem;
+    padding: 0.6rem 0.9rem;
+    margin-bottom: 1.5rem;
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+
+  .lede {
+    font-size: 1.15rem;
+  }
+
+  .ledger dl {
+    margin: 0;
+  }
+  .row {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .row dt {
+    color: var(--muted);
+  }
+  .row dd {
+    margin: 0;
+    text-align: right;
+    font-weight: 700;
+  }
+  .row.highlight dd {
+    color: var(--accent-2);
+  }
+
+  .receipts figure {
+    margin: 1.5rem 0;
+  }
+  .receipts figcaption {
+    color: var(--muted);
+    margin-bottom: 0.5rem;
+  }
+  .receipts img {
+    max-width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+  }
+  .receipt-pending {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 9rem;
+    border: 1px dashed var(--border);
+    border-radius: 0.5rem;
+    color: var(--muted);
+    font-style: italic;
+  }
+
+  footer {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+</style>

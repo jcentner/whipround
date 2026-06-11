@@ -1,0 +1,63 @@
+# Labels used to triage suggestions (maintainer-applied):
+#   suggestion  → new, untriaged (auto-applied below)
+#   shortlist   → a candidate we're seriously considering
+#   blessed     → beneficiary has given permission; eligible to go live
+#   rejected    → not a fit (see the tribute-only policy)
+#   done        → ran as a campaign
+name: Campaign suggestion
+description: Suggest a tribute for a future Whipround campaign.
+title: "[Campaign] "
+labels: ["suggestion"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a tribute! A few ground rules:
+
+        - **Curated, not first-come.** Suggestions are input; the maintainer picks.
+        - **Don't @-mention the beneficiary** anywhere yet — the blessing comes first, and we handle that outreach.
+        - **Tributes only:** thanks, memorials, milestones. No political or commercial asks, and nothing about a living person without their blessing.
+  - type: input
+    id: tribute-target
+    attributes:
+      label: Who's the tribute for?
+      description: The person or project — e.g. "Daniel Stenberg / curl".
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why this tribute, why now?
+      description: What does this community owe them? What makes it land?
+    validations:
+      required: true
+  - type: input
+    id: spinner-line
+    attributes:
+      label: Proposed spinner line (≤ 60 characters)
+      description: The status line itself. Gerund form fits the native spinner verbs — e.g. "Thanking Daniel for curl…".
+    validations:
+      required: true
+  - type: input
+    id: click-url
+    attributes:
+      label: Click destination URL
+      description: The beneficiary's existing sponsor/donate page (https://…). This is where ad clicks should land.
+    validations:
+      required: true
+  - type: input
+    id: blessing-contact
+    attributes:
+      label: Beneficiary contact for blessing
+      description: How we can reach them for permission (email/handle). We do the outreach — please don't contact them yourself.
+    validations:
+      required: true
+  - type: checkboxes
+    id: acknowledgements
+    attributes:
+      label: Before you submit
+      options:
+        - label: I understand this is curated, not first-come.
+          required: true
+        - label: I have NOT @-mentioned the beneficiary anywhere (the blessing comes first).
+          required: true
