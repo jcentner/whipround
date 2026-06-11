@@ -1,0 +1,78 @@
+---
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const {
+  title,
+  description = "Crowdfunded tribute ads in the AI coding spinner.",
+} = Astro.props;
+
+const canonical = Astro.site
+  ? new URL(Astro.url.pathname, Astro.site).href
+  : Astro.url.pathname;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="generator" content={Astro.generator} />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <slot name="head" />
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>
+
+<style is:global>
+  :root {
+    --bg: #0b0c10;
+    --fg: #e8eaed;
+    --muted: #9aa0a6;
+    --accent: #ffb000;
+    --accent-2: #4cc38a;
+    --border: #23252b;
+    --max: 46rem;
+    font-family:
+      ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+      "Liberation Mono", monospace;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  main {
+    max-width: var(--max);
+    margin: 0 auto;
+    padding: 2.5rem 1.25rem 4rem;
+  }
+
+  a {
+    color: var(--accent);
+  }
+
+  h1,
+  h2,
+  h3 {
+    line-height: 1.2;
+  }
+</style>

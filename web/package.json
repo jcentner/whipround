@@ -1,0 +1,26 @@
+{
+  "name": "whipround-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Whipround campaign site — crowdfunded tribute ads in the AI coding spinner.",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "check": "astro check",
+    "test": "vitest run",
+    "market": "tsx ../market/topofbook.ts"
+  },
+  "dependencies": {
+    "@astrojs/node": "^10.1.4",
+    "astro": "^6.4.6",
+    "stripe": "^22.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.3",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.8"
+  }
+}

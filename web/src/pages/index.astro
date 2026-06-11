@@ -1,0 +1,22 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { campaign } from "../../lib/campaign";
+import { formatUsd } from "../../lib/format";
+---
+
+<Layout title={`Whipround — ${campaign.headline}`}>
+  <main>
+    <h1>{campaign.headline}</h1>
+    <p>{campaign.story}</p>
+    <p>Goal: <strong>{formatUsd(campaign.goalCents)}</strong></p>
+    <p>Tribute for: {campaign.beneficiaryName}</p>
+
+    <footer>
+      <p>
+        Whipround is operated by
+        <a href="https://write-it-right.ai">Write It Right</a> (write-it-right.ai)
+        — the name that appears on your card statement.
+      </p>
+    </footer>
+  </main>
+</Layout>
