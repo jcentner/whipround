@@ -27,6 +27,13 @@ export interface PledgeRecord {
   amountRefundedCents: number;
 }
 
+/** A Checkout session for the campaign Product, with the fields refunds need. */
+export interface PledgeSession extends PledgeRecord {
+  sessionId: string;
+  paymentIntentId: string | null;
+  paid: boolean;
+}
+
 /**
  * Sum net pledged cents and count backers. Net excludes refunds; a fully
  * refunded pledge contributes nothing and isn't counted. Pure + tested.
@@ -90,25 +97,10 @@ export async function getProgress(): Promise<Progress> {
 
   try {
     const stripe = new Stripe(secretKey);
-    const records: PledgeRecord[] = [];
-
-    // Paid sessions for this Product. At Phase 0 volume the per-session line
-    // item lookup is fine; the whole call is cached for ~60s either way.
-    for await (const session of stripe.checkout.sessions.list({
-      status: "complete",
-      limit: 100,
-      expand: ["data.payment_intent.latest_charge"],
-    })) {
-      if (session.payment_status !== "paid") continue;
-      if (!(await sessionMatchesProduct(stripe, session.id, productId))) continue;
-
-      records.push({
-        amountTotalCents: session.amount_total ?? 0,
-        amountRefundedCents: refundedCentsOf(session.payment_intent),
-      });
-    }
-
-    const { pledgedCents, pledgerCount } = aggregatePledges(records);
+    const sessions = await listCampaignPledges(stripe, productId);
+    const { pledgedCents, pledgerCount } = aggregatePledges(
+      sessions.filter((s) => s.paid),
+    );
     const value = buildProgress(pledgedCents, pledgerCount, campaign.goalCents);
     cached = { value, at: now };
     return value;
@@ -116,6 +108,34 @@ export async function getProgress(): Promise<Progress> {
     if (cached) return cached.value;
     return buildProgress(0, 0, campaign.goalCents);
   }
+}
+
+/**
+ * List every Checkout session for the campaign Product (paid or not), with the
+ * ids and amounts both the thermometer and the refund command need. Shared so
+ * the two never drift apart.
+ */
+export async function listCampaignPledges(
+  stripe: Stripe,
+  productId: string,
+): Promise<PledgeSession[]> {
+  const out: PledgeSession[] = [];
+  for await (const session of stripe.checkout.sessions.list({
+    status: "complete",
+    limit: 100,
+    expand: ["data.payment_intent.latest_charge"],
+  })) {
+    if (!(await sessionMatchesProduct(stripe, session.id, productId))) continue;
+    const pi = session.payment_intent;
+    out.push({
+      sessionId: session.id,
+      paymentIntentId: pi ? (typeof pi === "string" ? pi : pi.id) : null,
+      amountTotalCents: session.amount_total ?? 0,
+      amountRefundedCents: refundedCentsOf(pi),
+      paid: session.payment_status === "paid",
+    });
+  }
+  return out;
 }
 
 function refundedCentsOf(
