@@ -1,21 +1,37 @@
-# web/ — campaign site (stub)
+# web/ — Whipround campaign site
 
-Not yet scaffolded. Task T1 in [../TASKS.md](../TASKS.md) creates the Astro app here (static-first, Node adapter — D7); the stubs in `lib/` are the contracts to build around.
+A static-first [Astro](https://astro.build) site for a single crowdfunding
+campaign. The page is prerendered HTML; only the live progress endpoint and the
+share image render on demand, served by a small Node process behind nginx.
 
-Target structure:
+## Layout
 
+| Path | What |
+|------|------|
+| `lib/campaign.ts` | Single source of truth for campaign content — edit this, not the markup. |
+| `lib/progress.ts` | Pledge totals from the Stripe API (Stripe is the datastore; no DB). |
+| `lib/format.ts` | Money formatting. |
+| `src/pages/index.astro` | The campaign page. |
+| `src/pages/api/progress.ts` | Live thermometer JSON (cached ~60s). |
+| `src/pages/report.astro` | Post-campaign transparency report. |
+| `src/components/Thermometer.astro` | The one interactive island. |
+| `deploy/` | systemd unit + nginx vhost + `DEPLOY.md`. |
+
+## Develop
+
+```bash
+npm install
+npm run dev        # http://localhost:4321
+npm run build      # static client + standalone Node server in dist/
+npm test           # unit tests (progress math, market parser)
+npm run market     # print live kickbacks.ai top-of-book
 ```
-web/
-  src/pages/
-    index.astro            # the campaign page (T5) — everything from lib/campaign.ts
-    api/progress.ts        # thermometer endpoint (T4) — thin wrapper over lib/progress.ts
-    report.astro           # transparency report template (T7)
-  src/islands/
-    Thermometer.*          # the only client-side component
-  lib/
-    campaign.ts            # ✅ stubbed — single source of campaign content
-    progress.ts            # ✅ stubbed — Stripe-as-database aggregation
-  deploy/                  # systemd unit + nginx vhost + DEPLOY.md (T1)
+
+The progress endpoint reads Stripe at runtime:
+
+```bash
+STRIPE_SECRET_KEY=sk_...  WHIPROUND_STRIPE_PRODUCT_ID=prod_...  npm run dev
 ```
 
-Page requirements live in TASKS.md T5 and [../docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md) ("web/" section + economics). Read both before writing markup.
+See [`deploy/DEPLOY.md`](deploy/DEPLOY.md) to ship it.
+

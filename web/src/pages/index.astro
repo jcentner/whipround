@@ -2,14 +2,50 @@
 import Layout from "../layouts/Layout.astro";
 import { campaign } from "../../lib/campaign";
 import { formatUsd } from "../../lib/format";
+
+const isPlaceholder = (s: string) => s.startsWith("[") && s.endsWith("]");
+const pledgeReady = campaign.pledgeLinks.every((link) => !isPlaceholder(link.url));
+
+function pledgeLabel(amountCents: number | "custom"): string {
+  return amountCents === "custom" ? "Choose amount" : formatUsd(amountCents);
+}
 ---
 
 <Layout title={`Whipround — ${campaign.headline}`}>
   <main>
+    <!-- Revealed by the thermometer island after a pledger returns from Stripe (?pledged=1). -->
+    <aside id="pledged-banner" class="pledged-banner" hidden>
+      <strong>Thank you — your pledge is in.</strong>
+      Watch the thermometer move, then tell one person who'd care.
+    </aside>
+
     <h1>{campaign.headline}</h1>
     <p>{campaign.story}</p>
     <p>Goal: <strong>{formatUsd(campaign.goalCents)}</strong></p>
     <p>Tribute for: {campaign.beneficiaryName}</p>
+
+    <section class="pledge" aria-labelledby="pledge-heading">
+      <h2 id="pledge-heading">Pledge</h2>
+      {
+        pledgeReady ? (
+          <ul class="pledge-buttons">
+            {campaign.pledgeLinks.map((link) => (
+              <li>
+                <a class="pledge-btn" href={link.url} rel="nofollow">
+                  {pledgeLabel(link.amountCents)}
+                </a>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p class="pledge-pending">Pledging opens when the campaign goes live.</p>
+        )
+      }
+      <p class="pledge-note">
+        Pledges are charged immediately. If the goal isn't met by the deadline,
+        every pledge is refunded in full.
+      </p>
+    </section>
 
     <footer>
       <p>
@@ -20,3 +56,52 @@ import { formatUsd } from "../../lib/format";
     </footer>
   </main>
 </Layout>
+
+<style>
+  .pledged-banner {
+    display: block;
+    border: 1px solid var(--accent-2);
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1.5rem;
+    background: color-mix(in srgb, var(--accent-2) 12%, transparent);
+  }
+
+  .pledge {
+    margin: 2rem 0;
+  }
+
+  .pledge-buttons {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 0.75rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .pledge-btn {
+    display: inline-block;
+    padding: 0.75rem 1.5rem;
+    border: 1px solid var(--accent);
+    border-radius: 0.5rem;
+    color: var(--bg);
+    background: var(--accent);
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .pledge-btn:hover {
+    filter: brightness(1.08);
+  }
+
+  .pledge-pending {
+    color: var(--muted);
+    font-style: italic;
+  }
+
+  .pledge-note {
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+</style>
