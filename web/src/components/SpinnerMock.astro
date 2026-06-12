@@ -1,0 +1,133 @@
+---
+interface Props {
+  /** The campaign's spinner line; placeholder campaigns get a generic tribute. */
+  adCopy: string;
+}
+
+const { adCopy } = Astro.props;
+
+const isPlaceholder = adCopy.startsWith("[") && adCopy.endsWith("]");
+const line = (
+  isPlaceholder ? "Thanking the maintainer your whole stack depends on" : adCopy
+).replace(/…+$/, "");
+
+// Claude Code's spinner cycles through star glyphs; we stack them and fade
+// each in for a quarter of the loop. prefers-reduced-motion pins the first.
+const glyphs = ["✻", "✽", "✶", "✳"];
+---
+
+<figure class="spinner-mock">
+  <div class="term" role="img" aria-label={`A terminal running an AI coding agent. The spinner line reads: ${line}…`}>
+    <div class="term-bar" aria-hidden="true">
+      <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+      <span class="term-title">~/your-project — agent</span>
+    </div>
+    <div class="term-body" aria-hidden="true">
+      <span class="spin-glyph">
+        {glyphs.map((g, i) => (
+          <span class="g" style={`animation-delay: ${i * 0.3}s`}>{g}</span>
+        ))}
+      </span>
+      <span class="spin-line">{line}…</span>
+      <span class="spin-meta">(esc to interrupt)</span>
+    </div>
+  </div>
+  <figcaption>
+    This is the ad. The sponsored line that replaces the spinner verb in AI
+    coding tools — slot #1 serves first. We're pooling money to put a thank-you
+    there.
+  </figcaption>
+</figure>
+
+<style>
+  .spinner-mock {
+    margin: 1.75rem 0;
+  }
+
+  .term {
+    border: 1px solid var(--border);
+    border-radius: 0.6rem;
+    background: #07080b;
+    overflow: hidden;
+  }
+
+  .term-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .dot {
+    width: 0.6rem;
+    height: 0.6rem;
+    border-radius: 50%;
+    background: var(--border);
+  }
+  .term-title {
+    margin-left: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+
+  .term-body {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    padding: 1.1rem 1rem 1.3rem;
+    font-size: 1rem;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  .spin-glyph {
+    position: relative;
+    display: inline-block;
+    width: 1.1em;
+    flex: none;
+    color: var(--accent);
+  }
+  .spin-glyph .g {
+    position: absolute;
+    left: 0;
+    top: 0;
+    opacity: 0;
+    animation: glyph-cycle 1.2s infinite;
+  }
+  @keyframes glyph-cycle {
+    0%, 24.9% { opacity: 1; }
+    25%, 100% { opacity: 0; }
+  }
+
+  .spin-line {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .spin-meta {
+    flex: none;
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+
+  figcaption {
+    margin-top: 0.5rem;
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .spin-glyph .g {
+      animation: none;
+    }
+    .spin-glyph .g:first-child {
+      opacity: 1;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .spin-meta {
+      display: none;
+    }
+  }
+</style>
