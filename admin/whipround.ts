@@ -28,6 +28,13 @@ import {
   executeRefunds,
 } from "./src/refund";
 import { extractFields, scaffoldCampaignEntry } from "./src/promote";
+import {
+  productName,
+  planSummary,
+  formatCampaignBlock,
+  findActiveProductByName,
+  createCampaignStripe,
+} from "./src/stripe-setup";
 
 const argv = process.argv.slice(2);
 
@@ -41,8 +48,9 @@ function usage(): never {
   market
   refund-campaign <productId> [--dry-run] [--yes]
   promote <issue#>
+  stripe-setup --name "<beneficiary>" [--yes]
 
-Env: GITHUB_TOKEN (suggestions/promote), STRIPE_SECRET_KEY (progress/refund).`);
+Env: GITHUB_TOKEN (suggestions/promote), STRIPE_SECRET_KEY (progress/refund/stripe-setup).`);
   process.exit(1);
 }
 
@@ -155,6 +163,42 @@ async function cmdPromote(args: string[]): Promise<void> {
   console.log(scaffoldCampaignEntry(extractFields(issue)));
 }
 
+async function cmdStripeSetup(args: string[]): Promise<void> {
+  const i = args.indexOf("--name");
+  const name = i !== -1 ? args[i + 1] : undefined;
+  if (!name || name.startsWith("--")) usage();
+  const yes = args.includes("--yes");
+
+  const stripe = stripeFromEnv();
+  const mode = (process.env.STRIPE_SECRET_KEY ?? "").startsWith("sk_live_")
+    ? "LIVE"
+    : "test";
+
+  const existing = await findActiveProductByName(stripe, productName(name));
+  if (existing) {
+    console.error(
+      `An active Product "${productName(name)}" already exists (${existing.id}). ` +
+        "Refusing to create a duplicate link set — reuse it or archive it first.",
+    );
+    process.exit(1);
+  }
+
+  console.log(`stripe-setup (${mode} mode)`);
+  for (const line of planSummary(name)) console.log(line);
+
+  if (!yes) {
+    console.log("");
+    console.log("Re-run with --yes to create the product, prices, and links.");
+    return;
+  }
+
+  const { productId, links } = await createCampaignStripe(stripe, name);
+  console.log("");
+  console.log("Created. Paste into web/lib/campaign.ts:");
+  console.log("");
+  console.log(formatCampaignBlock(productId, links));
+}
+
 async function main(): Promise<void> {
   const [command, ...rest] = argv;
   switch (command) {
@@ -168,6 +212,8 @@ async function main(): Promise<void> {
       return cmdRefund(rest);
     case "promote":
       return cmdPromote(rest);
+    case "stripe-setup":
+      return cmdStripeSetup(rest);
     default:
       usage();
   }
