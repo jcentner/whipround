@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
 import { getProgress } from "../../../lib/progress";
+import { effectiveGoal } from "../../../lib/preview";
 import { getTopOfBook } from "../../../../market/topofbook";
 
 // Rendered on demand so the thermometer reads live Stripe totals and the live
@@ -20,7 +21,22 @@ export const GET: APIRoute = async () => {
     /* market unavailable — leave price null; the thermometer still works */
   }
 
-  const body = { ...progress, topBidCents, topBidStale };
+  // Pre-launch the goal/floor are sized live from top-of-book (D14); at launch
+  // effectiveGoal returns the frozen campaign.ts values. Substitute the goal and
+  // recompute the fraction so the thermometer, ledger, and OG card all agree.
+  const { goalCents, floorCents } = effectiveGoal({ topBidCents, stale: topBidStale });
+  const fraction =
+    goalCents > 0 ? Math.min(1, Math.max(0, progress.pledgedCents / goalCents)) : 0;
+
+  const body = {
+    pledgedCents: progress.pledgedCents,
+    pledgerCount: progress.pledgerCount,
+    goalCents,
+    floorCents,
+    fraction,
+    topBidCents,
+    topBidStale,
+  };
   return new Response(JSON.stringify(body), {
     status: 200,
     headers: {

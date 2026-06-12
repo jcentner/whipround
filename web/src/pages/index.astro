@@ -4,10 +4,12 @@ import Thermometer from "../components/Thermometer.astro";
 import { campaign } from "../../lib/campaign";
 import { formatUsd } from "../../lib/format";
 import { goalBreakdown } from "../../lib/economics";
+import { marketCoverageHtml } from "../../lib/preview";
 
 const isPlaceholder = (s: string) => s.startsWith("[") && s.endsWith("]");
 const pledgeReady = campaign.pledgeLinks.every((link) => !isPlaceholder(link.url));
 const campaignChosen = !isPlaceholder(campaign.beneficiaryName);
+const isPreview = isPlaceholder(campaign.fundingDeadline);
 
 const breakdown = goalBreakdown(
   campaign.goalCents,
@@ -42,11 +44,21 @@ function pledgeClass(amountCents: number | "custom"): string {
     </header>
 
     {
-      !campaignChosen && (
+      (isPreview || !campaignChosen) && (
         <aside class="preview-notice">
-          <strong>Preview.</strong> Campaign #1 hasn't been chosen yet, so the
-          beneficiary copy below is placeholder text marked
-          <code>[CAMPAIGN-TBD]</code>.
+          <strong>Preview.</strong>
+          {!campaignChosen && (
+            <Fragment>
+              {" "}Campaign #1 hasn't been chosen yet, so the beneficiary copy
+              below is placeholder text marked <code>[CAMPAIGN-TBD]</code>.
+            </Fragment>
+          )}
+          {isPreview && (
+            <Fragment>
+              {" "}The goal and floor below are sized live from today's market
+              and freeze at launch.
+            </Fragment>
+          )}
         </aside>
       )
     }
@@ -64,21 +76,26 @@ function pledgeClass(amountCents: number | "custom"): string {
 
     <p class="market-line">
       Right now, the top of the kickbacks.ai queue costs
-      <strong id="mkt-price">—</strong> per 1,000 impressions. Split a hundred
-      ways, that's a coffee.
+      <strong id="mkt-price">—</strong> per 1,000 impressions.
+      <span id="mkt-coverage" set:html={marketCoverageHtml(breakdown.goalCents)}></span>
     </p>
 
     <section class="buys" aria-labelledby="buys-heading">
       <h2 id="buys-heading">What your money buys</h2>
       <p>The goal is sized straight from the auction, in the open:</p>
-      <dl class="ledger-math">
+      <dl
+        class="ledger-math"
+        id="ledger-math"
+        data-target-blocks={breakdown.targetBlocks}
+        data-buffer={breakdown.clickBufferMultiplier}
+      >
         <div class="row">
           <dt>{breakdown.targetBlocks} blocks at #1</dt>
           <dd>{breakdown.impressions.toLocaleString("en-US")} impressions</dd>
         </div>
         <div class="row">
           <dt>Implied block price</dt>
-          <dd>{formatUsd(breakdown.impliedBlockPriceCents)}</dd>
+          <dd id="ledger-implied">{formatUsd(breakdown.impliedBlockPriceCents)}</dd>
         </div>
         <div class="row">
           <dt>Click buffer</dt>
@@ -86,16 +103,16 @@ function pledgeClass(amountCents: number | "custom"): string {
         </div>
         <div class="row">
           <dt>Floor — 1 block, tribute runs regardless</dt>
-          <dd>{formatUsd(breakdown.floorCents)}</dd>
+          <dd id="ledger-floor">{formatUsd(breakdown.floorCents)}</dd>
         </div>
         <div class="row total">
           <dt>Goal</dt>
-          <dd>{formatUsd(breakdown.goalCents)}</dd>
+          <dd id="ledger-goal">{formatUsd(breakdown.goalCents)}</dd>
         </div>
       </dl>
       <p class="fine">
-        If the live price moves before launch, the goal is re-sized in public —
-        never quietly shrunk.
+        Until launch, the goal tracks the live market. At launch it freezes —
+        any later re-size happens in public, never quietly.
       </p>
     </section>
 
@@ -130,7 +147,7 @@ function pledgeClass(amountCents: number | "custom"): string {
         <strong>
           Pledges are charged immediately and spent as promised: every dollar
           becomes spinner time or goes straight to {campaign.beneficiaryName}. If the
-          pool can't cover even one block ({formatUsd(breakdown.floorCents)}) by {deadlineText},
+          pool can't cover even one block (<span id="note-floor">{formatUsd(breakdown.floorCents)}</span>) by {deadlineText},
           every pledge is refunded in full.
         </strong>
       </p>
@@ -150,7 +167,7 @@ function pledgeClass(amountCents: number | "custom"): string {
       <p>
         We buy what the pool affords. The goal funds {breakdown.targetBlocks} blocks; if
         pledges only cover one or two by {deadlineText}, we buy those and the tribute
-        runs anyway. Only if the pool can't cover a single block — under {formatUsd(breakdown.floorCents)} —
+        runs anyway. Only if the pool can't cover a single block — under <span id="faq-floor">{formatUsd(breakdown.floorCents)}</span> —
         is everyone refunded in full. You're charged when you pledge; in that one
         case, the charge is reversed.
       </p>
@@ -182,8 +199,10 @@ function pledgeClass(amountCents: number | "custom"): string {
       <h3>Who runs this?</h3>
       <p>
         Whipround is operated by
-        <a href="https://write-it-right.ai">Write It Right</a> (write-it-right.ai).
-        That's the name you'll see on your card statement.
+        <a href="https://write-it-right.ai">Write It Right</a> (write-it-right.ai) —
+        that's the name you'll see on your card statement — and built by one
+        person, <a href="https://x.com/JacobCentner">Jacob Centner</a>. Questions,
+        complaints, compliments: he reads all three.
       </p>
     </section>
 
@@ -205,9 +224,10 @@ function pledgeClass(amountCents: number | "custom"): string {
 
     <footer>
       <p>
-        Operated by <a href="https://write-it-right.ai">Write It Right</a>
-        (write-it-right.ai). Pledges are processed by Stripe; we store only
-        aggregate totals, never your name or email.
+        Operated by <a href="https://write-it-right.ai">Write It Right</a> ·
+        built by <a href="https://x.com/JacobCentner">@JacobCentner</a>. Pledges
+        are processed by Stripe; we store only aggregate totals, never your name
+        or email.
       </p>
     </footer>
   </main>

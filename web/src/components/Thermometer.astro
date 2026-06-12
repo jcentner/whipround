@@ -19,7 +19,7 @@ const floorPct =
     <span id="thermo-pledged" class="thermo-pledged" data-goal={goalCents}>
       {formatUsd(0)}
     </span>
-    <span class="thermo-goal">pledged of {formatUsd(goalCents)} goal</span>
+    <span class="thermo-goal">pledged of <span id="thermo-goal-amt">{formatUsd(goalCents)}</span> goal</span>
   </div>
 
   <div
@@ -32,6 +32,7 @@ const floorPct =
   >
     <div id="thermo-fill" class="thermo-fill" style="width: 0%"></div>
     <div
+      id="thermo-tick-floor"
       class="thermo-tick thermo-tick-floor"
       style={`left: ${floorPct}%`}
       aria-hidden="true"
@@ -41,7 +42,11 @@ const floorPct =
   </div>
 
   <div class="thermo-ticklabels" aria-hidden="true">
-    <span class="ticklabel ticklabel-floor" style={`left: ${floorPct}%`}>
+    <span
+      id="thermo-ticklabel-floor"
+      class="ticklabel ticklabel-floor"
+      style={`left: ${floorPct}%`}
+    >
       1 block
     </span>
     <span class="ticklabel ticklabel-goal">goal</span>
@@ -49,12 +54,13 @@ const floorPct =
 
   <p class="thermo-count">
     <span id="thermo-countwrap" hidden><span id="thermo-count">0</span> pledgers</span>
-    <span id="thermo-first" class="thermo-first">Nobody has pledged yet. Be the first — it's a coffee.</span>
+    <span id="thermo-first" class="thermo-first">Nobody has pledged yet. Someone has to be first.</span>
   </p>
 </section>
 
 <script>
   import { formatUsd } from "../../lib/format";
+  import { marketCoverageHtml } from "../../lib/preview";
 
   const pledgedEl = document.getElementById("thermo-pledged");
   const fillEl = document.getElementById("thermo-fill");
@@ -65,6 +71,52 @@ const floorPct =
   const priceEl = document.getElementById("mkt-price");
   const bannerEl = document.getElementById("pledged-banner");
 
+  // Numbers the island re-sizes from the live goal while the campaign is in
+  // preview (D14). At launch the API returns the frozen campaign.ts goal, so
+  // these writes just restate the build-time values — a harmless no-op.
+  const goalAmtEl = document.getElementById("thermo-goal-amt");
+  const tickFloorEl = document.getElementById("thermo-tick-floor");
+  const tickLabelFloorEl = document.getElementById("thermo-ticklabel-floor");
+  const ledgerEl = document.getElementById("ledger-math");
+  const ledgerImpliedEl = document.getElementById("ledger-implied");
+  const ledgerFloorEl = document.getElementById("ledger-floor");
+  const ledgerGoalEl = document.getElementById("ledger-goal");
+  const noteFloorEl = document.getElementById("note-floor");
+  const faqFloorEl = document.getElementById("faq-floor");
+  const coverageEl = document.getElementById("mkt-coverage");
+
+  function applyGoal(goalCents: number, floorCents: number): void {
+    const usdGoal = formatUsd(goalCents);
+    const usdFloor = formatUsd(floorCents);
+    if (goalAmtEl) goalAmtEl.textContent = usdGoal;
+    if (ledgerGoalEl) ledgerGoalEl.textContent = usdGoal;
+    if (ledgerFloorEl) ledgerFloorEl.textContent = usdFloor;
+    if (noteFloorEl) noteFloorEl.textContent = usdFloor;
+    if (faqFloorEl) faqFloorEl.textContent = usdFloor;
+    if (trackEl) trackEl.setAttribute("aria-valuemax", String(goalCents));
+
+    // Implied block price = goal / (blocks × buffer), kept consistent with the
+    // displayed goal rather than read straight off the (rounded) live price.
+    if (ledgerImpliedEl && ledgerEl) {
+      const denom =
+        Number(ledgerEl.dataset.targetBlocks) * Number(ledgerEl.dataset.buffer);
+      if (denom > 0) {
+        ledgerImpliedEl.textContent = formatUsd(Math.round(goalCents / denom));
+      }
+    }
+
+    // Floor tick + label position, clamped inside the rounded pill.
+    if (goalCents > 0) {
+      const floorPct = Math.min(98, Math.max(2, (floorCents / goalCents) * 100));
+      if (tickFloorEl) tickFloorEl.style.left = `${floorPct}%`;
+      if (tickLabelFloorEl) tickLabelFloorEl.style.left = `${floorPct}%`;
+    }
+
+    // The market line's second sentence is banded on the displayed goal; the
+    // interpolated value is numeric only, so this innerHTML carries no user input.
+    if (coverageEl) coverageEl.innerHTML = marketCoverageHtml(goalCents);
+  }
+
   async function refresh(): Promise<void> {
     try {
       const res = await fetch("/api/progress", {
@@ -74,6 +126,8 @@ const floorPct =
       const p = (await res.json()) as {
         pledgedCents: number;
         pledgerCount: number;
+        goalCents: number;
+        floorCents: number;
         fraction: number;
         topBidCents?: number | null;
       };
@@ -86,6 +140,9 @@ const floorPct =
       if (firstEl) firstEl.hidden = hasPledges;
       if (priceEl && typeof p.topBidCents === "number") {
         priceEl.textContent = formatUsd(p.topBidCents);
+      }
+      if (typeof p.goalCents === "number") {
+        applyGoal(p.goalCents, p.floorCents ?? 0);
       }
     } catch {
       /* network blip — keep the last rendered state */

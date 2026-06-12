@@ -1,6 +1,8 @@
 import type { APIRoute } from "astro";
 import { getProgress } from "../../lib/progress";
 import { campaign } from "../../lib/campaign";
+import { effectiveGoal } from "../../lib/preview";
+import { getTopOfBook } from "../../../market/topofbook";
 import { renderOgPng } from "../../lib/og";
 
 // Rendered on demand so the share card reflects live thermometer state. Cached
@@ -18,7 +20,24 @@ let inflight: { key: string; png: Promise<Uint8Array<ArrayBuffer>> } | null = nu
 
 export const GET: APIRoute = async () => {
   const progress = await getProgress();
-  const key = `${progress.pledgedCents}:${progress.goalCents}:${progress.pledgerCount}`;
+
+  // Match the page: pre-launch the card goal is sized live from top-of-book
+  // (D14), so the share image and the page can never show different goals; at
+  // launch effectiveGoal returns the frozen campaign.ts goal.
+  let topBidCents: number | null = null;
+  let topBidStale = true;
+  try {
+    const market = await getTopOfBook();
+    topBidCents = market.topBidCents;
+    topBidStale = market.stale;
+  } catch {
+    /* market unavailable — fall back to the frozen campaign.ts goal */
+  }
+  const { goalCents } = effectiveGoal({ topBidCents, stale: topBidStale });
+  const fraction =
+    goalCents > 0 ? Math.min(1, Math.max(0, progress.pledgedCents / goalCents)) : 0;
+
+  const key = `${progress.pledgedCents}:${goalCents}:${progress.pledgerCount}`;
 
   let png: Uint8Array<ArrayBuffer>;
   if (cached?.key === key) {
@@ -28,9 +47,9 @@ export const GET: APIRoute = async () => {
       const render = renderOgPng({
         headline: campaign.headline,
         pledgedCents: progress.pledgedCents,
-        goalCents: progress.goalCents,
+        goalCents,
         pledgerCount: progress.pledgerCount,
-        fraction: progress.fraction,
+        fraction,
       })
         .then((buf) => {
           const bytes = new Uint8Array(buf);
