@@ -5,10 +5,10 @@ import node from '@astrojs/node';
 // Static-first: every page is prerendered to HTML except the routes that opt in
 // to on-demand rendering with `export const prerender = false` (the live progress
 // endpoint and the OG image). Cloudflare serves the static HTML; only those two
-// routes ever reach the Node process. The standalone server runs behind nginx,
+// routes ever reach the Node process. The standalone server runs behind Caddy,
 // which terminates TLS.
 export default defineConfig({
-  site: 'https://whipround.com',
+  site: 'https://whipround.dev',
   output: 'static',
   adapter: node({ mode: 'standalone' }),
   // The progress endpoint imports the shared market/ module, a sibling of web/.

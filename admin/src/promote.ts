@@ -42,7 +42,12 @@ export function extractFields(issue: IssueDetail): PromotedFields {
 
 /** A campaign.ts entry seeded from a suggestion. Beneficiary/Stripe stay TBD. */
 export function scaffoldCampaignEntry(f: PromotedFields): string {
-  const esc = (s: string) => s.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  const esc = (s: string) =>
+    s
+      .replace(/\\/g, "\\\\")
+      .replace(/"/g, '\\"')
+      .replace(/\r/g, "\\r")
+      .replace(/\n/g, "\\n");
   return `export const campaign: Campaign = {
   slug: "campaign-1",
   headline: "[CAMPAIGN-TBD] — ${esc(f.tributeTarget)}",

@@ -25,9 +25,13 @@ const { goalCents } = Astro.props;
     aria-valuenow="0"
   >
     <div id="thermo-fill" class="thermo-fill" style="width: 0%"></div>
+    <div class="thermo-tick" aria-hidden="true"></div>
   </div>
 
-  <p class="thermo-count"><span id="thermo-count">0</span> pledgers</p>
+  <p class="thermo-count">
+    <span id="thermo-countwrap" hidden><span id="thermo-count">0</span> pledgers</span>
+    <span id="thermo-first" class="thermo-first">Nobody has pledged yet. Be the first — it's a coffee.</span>
+  </p>
 </section>
 
 <script>
@@ -37,6 +41,8 @@ const { goalCents } = Astro.props;
   const fillEl = document.getElementById("thermo-fill");
   const trackEl = document.getElementById("thermo-track");
   const countEl = document.getElementById("thermo-count");
+  const countWrapEl = document.getElementById("thermo-countwrap");
+  const firstEl = document.getElementById("thermo-first");
   const priceEl = document.getElementById("mkt-price");
   const bannerEl = document.getElementById("pledged-banner");
 
@@ -56,6 +62,9 @@ const { goalCents } = Astro.props;
       if (fillEl) fillEl.style.width = `${Math.round((p.fraction ?? 0) * 100)}%`;
       if (trackEl) trackEl.setAttribute("aria-valuenow", String(p.pledgedCents));
       if (countEl) countEl.textContent = String(p.pledgerCount);
+      const hasPledges = p.pledgerCount > 0;
+      if (countWrapEl) countWrapEl.hidden = !hasPledges;
+      if (firstEl) firstEl.hidden = hasPledges;
       if (priceEl && typeof p.topBidCents === "number") {
         priceEl.textContent = formatUsd(p.topBidCents);
       }
@@ -86,7 +95,7 @@ const { goalCents } = Astro.props;
   }
 
   .thermo-pledged {
-    font-size: 1.75rem;
+    font-size: 2rem;
     font-weight: 700;
     color: var(--accent-2);
   }
@@ -96,22 +105,38 @@ const { goalCents } = Astro.props;
   }
 
   .thermo-track {
-    height: 1.25rem;
+    position: relative;
+    height: 1.4rem;
     background: var(--border);
+    border: 1px solid var(--muted);
     border-radius: 999px;
     overflow: hidden;
   }
 
   .thermo-fill {
     height: 100%;
+    min-width: 0.7rem;
     background: var(--accent-2);
     border-radius: 999px;
     transition: width 0.6s ease;
+  }
+
+  .thermo-tick {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 0.45rem;
+    width: 2px;
+    background: var(--accent);
+    opacity: 0.8;
   }
 
   .thermo-count {
     margin: 0.5rem 0 0;
     color: var(--muted);
     font-size: 0.9rem;
+  }
+  .thermo-first {
+    color: var(--accent-2);
   }
 </style>

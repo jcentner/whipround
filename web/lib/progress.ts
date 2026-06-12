@@ -111,29 +111,40 @@ export async function getProgress(): Promise<Progress> {
 }
 
 /**
- * List every Checkout session for the campaign Product (paid or not), with the
- * ids and amounts both the thermometer and the refund command need. Shared so
- * the two never drift apart.
+ * List every completed Checkout session that pledged to the campaign Product
+ * (paid or not), with the ids and amounts both the thermometer and the refund
+ * command need. Shared so the two never drift apart.
+ *
+ * Scoping: pledges are only ever created by the Product's Stripe Payment Links
+ * (see the module header), so we resolve which Payment Links sell the Product
+ * once — a small, fixed set — then list sessions scoped to each link with the
+ * `payment_link` filter. That avoids scanning every Checkout session on the
+ * account (the operating entity has unrelated sessions) and the per-session
+ * line-item lookup the old product match needed (a Checkout Session *list*
+ * can't expand `line_items`), so the work scales with the handful of Payment
+ * Links, not the pledge count.
  */
 export async function listCampaignPledges(
   stripe: Stripe,
   productId: string,
 ): Promise<PledgeSession[]> {
   const out: PledgeSession[] = [];
-  for await (const session of stripe.checkout.sessions.list({
-    status: "complete",
-    limit: 100,
-    expand: ["data.payment_intent.latest_charge"],
-  })) {
-    if (!(await sessionMatchesProduct(stripe, session.id, productId))) continue;
-    const pi = session.payment_intent;
-    out.push({
-      sessionId: session.id,
-      paymentIntentId: pi ? (typeof pi === "string" ? pi : pi.id) : null,
-      amountTotalCents: session.amount_total ?? 0,
-      amountRefundedCents: refundedCentsOf(pi),
-      paid: session.payment_status === "paid",
-    });
+  for (const paymentLink of await paymentLinksForProduct(stripe, productId)) {
+    for await (const session of stripe.checkout.sessions.list({
+      payment_link: paymentLink,
+      status: "complete",
+      limit: 100,
+      expand: ["data.payment_intent.latest_charge"],
+    })) {
+      const pi = session.payment_intent;
+      out.push({
+        sessionId: session.id,
+        paymentIntentId: pi ? (typeof pi === "string" ? pi : pi.id) : null,
+        amountTotalCents: session.amount_total ?? 0,
+        amountRefundedCents: refundedCentsOf(pi),
+        paid: session.payment_status === "paid",
+      });
+    }
   }
   return out;
 }
@@ -147,18 +158,27 @@ function refundedCentsOf(
   return charge.amount_refunded ?? 0;
 }
 
-async function sessionMatchesProduct(
+/**
+ * The ids of the Payment Links that sell the given Product. Payment Links are a
+ * small, fixed set (one per pledge amount), so this bounded lookup replaces the
+ * old per-session line-item call — its cost doesn't grow with the pledge count.
+ */
+async function paymentLinksForProduct(
   stripe: Stripe,
-  sessionId: string,
   productId: string,
-): Promise<boolean> {
-  const items = await stripe.checkout.sessions.listLineItems(sessionId, {
-    limit: 100,
-    expand: ["data.price"],
-  });
-  return items.data.some((item) => {
-    const product = item.price?.product;
-    const id = typeof product === "string" ? product : product?.id;
-    return id === productId;
-  });
+): Promise<string[]> {
+  const ids: string[] = [];
+  for await (const link of stripe.paymentLinks.list({ limit: 100 })) {
+    const items = await stripe.paymentLinks.listLineItems(link.id, {
+      limit: 100,
+      expand: ["data.price"],
+    });
+    const sellsProduct = items.data.some((item) => {
+      const product = item.price?.product;
+      const id = typeof product === "string" ? product : product?.id;
+      return id === productId;
+    });
+    if (sellsProduct) ids.push(link.id);
+  }
+  return ids;
 }

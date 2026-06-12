@@ -86,7 +86,7 @@ export async function renderOgPng(data: OgData): Promise<Buffer> {
         ),
         box(
           { marginTop: "22px", fontSize: "30px", color: "#9aa0a6" },
-          `${data.pledgerCount} pledgers · ${pct}% funded · write-it-right.ai`,
+          `${data.pledgerCount} pledgers · ${pct}% funded · whipround.dev`,
         ),
       ]),
     ],

@@ -26,10 +26,21 @@ const deadlineText = isPlaceholder(campaign.fundingDeadline)
 function pledgeLabel(amountCents: number | "custom"): string {
   return amountCents === "custom" ? "Choose amount" : formatUsd(amountCents);
 }
+
+function pledgeClass(amountCents: number | "custom"): string {
+  if (amountCents === "custom") return "pledge-btn ghost";
+  if (amountCents === 1000) return "pledge-btn primary";
+  return "pledge-btn secondary";
+}
 ---
 
 <Layout title={`Whipround — ${campaign.headline}`}>
   <main>
+    <header class="brand">
+      <span class="wordmark">WHIPROUND</span>
+      <span class="tagline">Crowdfunded tribute ads in the AI coding spinner.</span>
+    </header>
+
     {
       !campaignChosen && (
         <aside class="preview-notice">
@@ -53,26 +64,31 @@ function pledgeLabel(amountCents: number | "custom"): string {
 
     <p class="market-line">
       Right now, the top of the kickbacks.ai queue costs
-      <strong id="mkt-price">—</strong> per 1,000 impressions. A hundred people
-      can split that. One person joking around can't.
+      <strong id="mkt-price">—</strong> per 1,000 impressions. Split a hundred
+      ways, that's a coffee.
     </p>
 
     <section class="buys" aria-labelledby="buys-heading">
       <h2 id="buys-heading">What your money buys</h2>
       <p>The goal is sized straight from the auction, in the open:</p>
-      <ul class="math">
-        <li>
-          <strong>{breakdown.targetBlocks} blocks</strong> =
-          {breakdown.impressions.toLocaleString("en-US")} five-second impressions
-          in the spinner
-        </li>
-        <li>
-          sized at <strong>{formatUsd(breakdown.impliedBlockPriceCents)}</strong>
-          per block × <strong>{breakdown.clickBufferMultiplier}×</strong> a click
-          buffer
-        </li>
-        <li>= <strong>{formatUsd(breakdown.goalCents)}</strong> goal</li>
-      </ul>
+      <dl class="ledger-math">
+        <div class="row">
+          <dt>{breakdown.targetBlocks} blocks at #1</dt>
+          <dd>{breakdown.impressions.toLocaleString("en-US")} impressions</dd>
+        </div>
+        <div class="row">
+          <dt>Implied block price</dt>
+          <dd>{formatUsd(breakdown.impliedBlockPriceCents)}</dd>
+        </div>
+        <div class="row">
+          <dt>Click buffer</dt>
+          <dd>{breakdown.clickBufferMultiplier}×</dd>
+        </div>
+        <div class="row total">
+          <dt>Goal</dt>
+          <dd>{formatUsd(breakdown.goalCents)}</dd>
+        </div>
+      </dl>
       <p class="fine">
         If the live price moves before launch, the goal is re-sized in public —
         never quietly shrunk.
@@ -96,7 +112,7 @@ function pledgeLabel(amountCents: number | "custom"): string {
           <ul class="pledge-buttons">
             {campaign.pledgeLinks.map((link) => (
               <li>
-                <a class="pledge-btn" href={link.url} rel="nofollow">
+                <a class={pledgeClass(link.amountCents)} href={link.url} rel="nofollow">
                   {pledgeLabel(link.amountCents)}
                 </a>
               </li>
@@ -179,6 +195,31 @@ function pledgeLabel(amountCents: number | "custom"): string {
 </Layout>
 
 <style>
+  .brand {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    margin-bottom: 2.25rem;
+  }
+  .wordmark {
+    font-size: 0.8rem;
+    letter-spacing: 0.35em;
+    font-weight: 700;
+    color: var(--muted);
+  }
+  .tagline {
+    font-size: 0.95rem;
+    color: var(--muted);
+  }
+
+  h1 {
+    font-size: 2.3rem;
+    margin: 0.5rem 0 1rem;
+  }
+  main > section {
+    margin-top: 2.75rem;
+  }
+
   .preview-notice {
     border: 1px dashed var(--muted);
     border-radius: 0.5rem;
@@ -192,7 +233,6 @@ function pledgeLabel(amountCents: number | "custom"): string {
   }
 
   .pledged-banner {
-    display: block;
     border: 1px solid var(--accent-2);
     border-radius: 0.5rem;
     padding: 0.75rem 1rem;
@@ -211,12 +251,34 @@ function pledgeLabel(amountCents: number | "custom"): string {
     color: var(--accent);
   }
 
-  .buys .math {
-    list-style: none;
-    padding: 0;
-    margin: 0.5rem 0;
-    display: grid;
-    gap: 0.35rem;
+  .ledger-math {
+    margin: 0.75rem 0;
+  }
+  .ledger-math .row {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px dashed var(--border);
+  }
+  .ledger-math dt {
+    color: var(--muted);
+  }
+  .ledger-math dd {
+    margin: 0;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .ledger-math .row.total {
+    border-bottom: none;
+    border-top: 1px solid var(--muted);
+    margin-top: 0.25rem;
+    padding-top: 0.6rem;
+    font-weight: 700;
+  }
+  .ledger-math .row.total dt,
+  .ledger-math .row.total dd {
+    color: var(--fg);
   }
   .fine {
     color: var(--muted);
@@ -232,6 +294,7 @@ function pledgeLabel(amountCents: number | "custom"): string {
     margin: 0 0 0.75rem;
     display: flex;
     flex-wrap: wrap;
+    align-items: center;
     gap: 0.75rem;
   }
   .pledge-btn {
@@ -239,13 +302,34 @@ function pledgeLabel(amountCents: number | "custom"): string {
     padding: 0.75rem 1.5rem;
     border: 1px solid var(--accent);
     border-radius: 0.5rem;
-    color: var(--bg);
-    background: var(--accent);
     font-weight: 700;
     text-decoration: none;
   }
+  .pledge-btn.primary {
+    color: var(--bg);
+    background: var(--accent);
+    padding: 0.85rem 1.85rem;
+    font-size: 1.05rem;
+  }
+  .pledge-btn.secondary {
+    color: var(--accent);
+    background: transparent;
+    border-color: var(--accent);
+  }
+  .pledge-btn.ghost {
+    color: var(--muted);
+    background: transparent;
+    border-color: var(--border);
+    font-weight: 400;
+  }
   .pledge-btn:hover {
     filter: brightness(1.08);
+  }
+  .pledge-btn.secondary:hover,
+  .pledge-btn.ghost:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    filter: none;
   }
   .pledge-pending {
     color: var(--muted);

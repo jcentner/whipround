@@ -53,4 +53,30 @@ describe("extractFields + scaffoldCampaignEntry", () => {
     expect(out).toContain('adCopy: "Thanking Daniel for curl…"');
     expect(out).toContain('stripeProductId: "[STRIPE-TBD]"');
   });
+
+  it("escapes newlines so a multi-line answer stays a valid string literal", () => {
+    const multiline = [
+      "### Who's the tribute for?",
+      "",
+      "Some Maintainer",
+      "",
+      "### Why this tribute, why now?",
+      "",
+      "First line.",
+      "Second line.",
+    ].join("\n");
+    const out = scaffoldCampaignEntry(
+      extractFields({
+        number: 2,
+        title: "x",
+        labels: [],
+        url: "",
+        body: multiline,
+      } as IssueDetail),
+    );
+    const escapedNewline = String.fromCharCode(92, 110); // backslash + "n"
+    expect(out.match(/story: "(.*)"/)?.[1]).toBe(
+      `First line.${escapedNewline}Second line.`,
+    );
+  });
 });
