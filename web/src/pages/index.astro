@@ -60,7 +60,7 @@ function pledgeClass(amountCents: number | "custom"): string {
     <h1>{campaign.headline}</h1>
     <p class="lede">{campaign.story}</p>
 
-    <Thermometer goalCents={campaign.goalCents} />
+    <Thermometer goalCents={campaign.goalCents} floorCents={breakdown.floorCents} />
 
     <p class="market-line">
       Right now, the top of the kickbacks.ai queue costs
@@ -83,6 +83,10 @@ function pledgeClass(amountCents: number | "custom"): string {
         <div class="row">
           <dt>Click buffer</dt>
           <dd>{breakdown.clickBufferMultiplier}×</dd>
+        </div>
+        <div class="row">
+          <dt>Floor — 1 block, tribute runs regardless</dt>
+          <dd>{formatUsd(breakdown.floorCents)}</dd>
         </div>
         <div class="row total">
           <dt>Goal</dt>
@@ -124,8 +128,10 @@ function pledgeClass(amountCents: number | "custom"): string {
       }
       <p class="pledge-note">
         <strong>
-          Pledges are charged immediately. If we don't reach {formatUsd(campaign.goalCents)}
-          {" "}by {deadlineText}, every pledge is refunded in full.
+          Pledges are charged immediately and spent as promised: every dollar
+          becomes spinner time or goes straight to {campaign.beneficiaryName}. If the
+          pool can't cover even one block ({formatUsd(breakdown.floorCents)}) by {deadlineText},
+          every pledge is refunded in full.
         </strong>
       </p>
     </section>
@@ -142,22 +148,35 @@ function pledgeClass(amountCents: number | "custom"): string {
 
       <h3>What if the goal isn't met?</h3>
       <p>
-        Whipround campaigns run for a short window — about two weeks. If we don't
-        reach the goal by {deadlineText}, every pledge is refunded in full.
-        You're charged when you pledge; if the campaign doesn't fund, the charge
-        is reversed. No balances, no store credit.
+        We buy what the pool affords. The goal funds {breakdown.targetBlocks} blocks; if
+        pledges only cover one or two by {deadlineText}, we buy those and the tribute
+        runs anyway. Only if the pool can't cover a single block — under {formatUsd(breakdown.floorCents)} —
+        is everyone refunded in full. You're charged when you pledge; in that one
+        case, the charge is reversed.
       </p>
 
       <h3>What happens to leftover funds?</h3>
       <p>
-        Whatever isn't spent on the ad goes 100% to {campaign.beneficiaryName}'s
-        sponsor/donate page. Whipround keeps $0.
+        Everything the ad buy doesn't spend — including everything raised past the
+        goal — goes 100% to {campaign.beneficiaryName}'s sponsor/donate page. Whipround
+        keeps $0.
       </p>
 
       <h3>Is this a charity?</h3>
       <p>
         No. A pledge buys participation in a community ad buy — it isn't a
         donation and isn't tax-deductible. It's a tribute, paid for in the open.
+      </p>
+
+      <h3>Why not just donate directly?</h3>
+      <p>
+        You should — {campaign.beneficiaryName}'s sponsor page takes money today, no
+        crowdfund required. This buys the one thing a private donation can't:
+        gratitude in public, inside the tools {campaign.beneficiaryName}'s work makes
+        possible, in front of the exact people who owe them. A donation says thank
+        you once. This says it {breakdown.impressions.toLocaleString("en-US")} times — and
+        every click lands on the sponsor page, recruiting the recurring sponsors a
+        one-off gift can't.
       </p>
 
       <h3>Who runs this?</h3>

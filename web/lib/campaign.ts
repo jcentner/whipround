@@ -41,8 +41,8 @@ export const campaign: Campaign = {
   clickUrl: "[CAMPAIGN-TBD]",
   beneficiaryName: "[CAMPAIGN-TBD]",
   story: "[CAMPAIGN-TBD]",
-  goalCents: 60000, // placeholder: 5 blocks × $80 × 1.5 — re-size from live top-of-book at launch
-  targetBlocks: 5,
+  goalCents: 60000, // placeholder goal — re-sized from live top-of-book at launch (D14); floor = goal / targetBlocks (D15)
+  targetBlocks: 3,
   clickBufferMultiplier: 1.5,
   stripeProductId: "[STRIPE-TBD]",
   pledgeLinks: [

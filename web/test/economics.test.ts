@@ -25,4 +25,12 @@ describe("goalBreakdown", () => {
   it("guards against divide-by-zero", () => {
     expect(goalBreakdown(60000, 0, 1.5).impliedBlockPriceCents).toBe(0);
   });
+
+  it("derives the funding floor: one block incl. buffer (goal / targetBlocks)", () => {
+    expect(goalBreakdown(60000, 3, 1.5).floorCents).toBe(20000); // 60000 / 3 blocks
+  });
+
+  it("guards the floor against divide-by-zero", () => {
+    expect(goalBreakdown(60000, 0, 1.5).floorCents).toBe(0);
+  });
 });

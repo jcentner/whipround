@@ -25,6 +25,11 @@ export interface GoalBreakdown {
   impressions: number;
   /** The per-block price this goal implies: goal / (blocks × buffer). */
   impliedBlockPriceCents: number;
+  /**
+   * The funding floor: one block including its click buffer (goal / targetBlocks).
+   * Below this the campaign refunds in full; at or above it the tribute runs (D15).
+   */
+  floorCents: number;
 }
 
 /** Explain a configured goal back into its parts, for the "what you're buying" panel. */
@@ -40,5 +45,6 @@ export function goalBreakdown(
     clickBufferMultiplier,
     impressions: targetBlocks * IMPRESSIONS_PER_BLOCK,
     impliedBlockPriceCents: denom > 0 ? Math.round(goalCents / denom) : 0,
+    floorCents: targetBlocks > 0 ? Math.round(goalCents / targetBlocks) : 0,
   };
 }
